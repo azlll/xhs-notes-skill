@@ -1,0 +1,12 @@
+{
+  "provider": "openai-compatible",
+  "base_url": "https://api.example.com/v1",
+  "api_key": "YOUR_API_KEY",
+  "model": "image-model-name",
+  "size": "1024x1024",
+  "quality": "standard",
+  "timeout_seconds": 120,
+  "response_format": "b64_json",
+  "output_dir": "outputs/images"
+}
+

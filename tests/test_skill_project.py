@@ -50,6 +50,10 @@ class SkillProjectTest(unittest.TestCase):
         self.assertIn("references/trend_keywords.md", skill)
         self.assertIn("references/meme_sentence_patterns.md", skill)
         self.assertIn("references/trend_update_rules.md", skill)
+        self.assertIn("references/live_formula_refresh.md", skill)
+        self.assertIn("references/image_understanding_prompt.md", skill)
+        self.assertIn("公式联网刷新", skill)
+        self.assertIn("图片理解提示词", skill)
         self.assertIn("## 可复制发布区", skill)
         self.assertIn("## 分析说明", skill)
 
@@ -95,6 +99,8 @@ class SkillProjectTest(unittest.TestCase):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn("## 一分钟上手", readme)
         self.assertIn("## 选择输入模式", readme)
+        self.assertIn("## 联网刷新如何工作", readme)
+        self.assertIn("## 图片分析会看哪些信息", readme)
         self.assertIn("## 怎样提需求效果更好", readme)
         self.assertIn("## 输出格式", readme)
         self.assertIn("## 使用案例", readme)
@@ -113,13 +119,15 @@ class SkillProjectTest(unittest.TestCase):
 
     def test_required_reference_content(self):
         checks = {
-            "references/title_formulas.md": ["数字清单型", "痛点解决型", "赛道细分"],
-            "references/content_templates.md": ["STAR 结构模板", "教程型模板", "避坑型模板"],
-            "references/tags_strategy.md": ["组合规则", "长尾词", "标签自检"],
+            "references/title_formulas.md": ["搜索关键词型", "节点借势型", "探店本地型", "AI/创意型", "健康运动型"],
+            "references/content_templates.md": ["探店推荐模板", "热点借势模板", "图片解读模板", "AI 创作拆解模板"],
+            "references/tags_strategy.md": ["标签公式", "节点借势公式", "本地探店公式", "AI 创作公式", "标签自检"],
             "references/hooks_library.md": ["置顶评论模板", "避免使用"],
             "references/trend_keywords.md": ["2026 小红书趋势向热词", "长期可用的轻热词", "风险边界"],
             "references/meme_sentence_patterns.md": ["标题句式", "开头句式", "赛道适配"],
             "references/trend_update_rules.md": ["何时需要更新", "推荐校验流程", "降级策略"],
+            "references/live_formula_refresh.md": ["联网不可用", "回退到内置公式库", "搜索查询"],
+            "references/image_understanding_prompt.md": ["当前农历日期", "可见事实", "合理推断", "不确定信息", "社会热点"],
             "references/risk_checklist.md": ["AI 生成内容", "发布前检查清单"],
         }
         for relative_path, needles in checks.items():

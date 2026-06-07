@@ -50,8 +50,11 @@ class SkillProjectTest(unittest.TestCase):
         self.assertIn("references/trend_keywords.md", skill)
         self.assertIn("references/meme_sentence_patterns.md", skill)
         self.assertIn("references/trend_update_rules.md", skill)
+        self.assertIn("references/dynamic_clarification.md", skill)
         self.assertIn("references/live_formula_refresh.md", skill)
         self.assertIn("references/image_understanding_prompt.md", skill)
+        self.assertIn("动态澄清规则", skill)
+        self.assertIn("request_user_input", skill)
         self.assertIn("公式联网刷新", skill)
         self.assertIn("图片理解提示词", skill)
         self.assertIn("## 可复制发布区", skill)
@@ -98,6 +101,7 @@ class SkillProjectTest(unittest.TestCase):
     def test_readme_usage_cases(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn("## 一分钟上手", readme)
+        self.assertIn("## 首次执行会先确认什么", readme)
         self.assertIn("## 选择输入模式", readme)
         self.assertIn("## 联网刷新如何工作", readme)
         self.assertIn("## 图片分析会看哪些信息", readme)
@@ -108,6 +112,8 @@ class SkillProjectTest(unittest.TestCase):
         self.assertIn("视觉理解模式", readme)
         self.assertIn("文字规划模式", readme)
         self.assertIn("推荐输入结构", readme)
+        self.assertIn("动态澄清", readme)
+        self.assertIn("选项框", readme)
         for needle in (
             "风景图生成治愈文案",
             "AI 插画生成热梗风笔记",
@@ -126,6 +132,7 @@ class SkillProjectTest(unittest.TestCase):
             "references/trend_keywords.md": ["2026 小红书趋势向热词", "长期可用的轻热词", "风险边界"],
             "references/meme_sentence_patterns.md": ["标题句式", "开头句式", "赛道适配"],
             "references/trend_update_rules.md": ["何时需要更新", "推荐校验流程", "降级策略"],
+            "references/dynamic_clarification.md": ["需求完整度判断", "客户端原生", "动态生成问题", "联网辅助提问", "不要声称已弹出选项框"],
             "references/live_formula_refresh.md": ["联网不可用", "回退到内置公式库", "搜索查询"],
             "references/image_understanding_prompt.md": ["当前农历日期", "可见事实", "合理推断", "不确定信息", "社会热点"],
             "references/risk_checklist.md": ["AI 生成内容", "发布前检查清单"],

@@ -51,12 +51,17 @@ class SkillProjectTest(unittest.TestCase):
         self.assertIn("references/meme_sentence_patterns.md", skill)
         self.assertIn("references/trend_update_rules.md", skill)
         self.assertIn("references/dynamic_clarification.md", skill)
+        self.assertIn("references/topic_selection.md", skill)
         self.assertIn("references/live_formula_refresh.md", skill)
         self.assertIn("references/image_understanding_prompt.md", skill)
         self.assertIn("动态澄清规则", skill)
+        self.assertIn("强制确认主题", skill)
+        self.assertIn("未确认主题不得生成最终笔记", skill)
+        self.assertIn("生成标题前联网搜索", skill)
         self.assertIn("request_user_input", skill)
         self.assertIn("公式联网刷新", skill)
         self.assertIn("图片理解提示词", skill)
+        self.assertIn("智能选题", skill)
         self.assertIn("## 可复制发布区", skill)
         self.assertIn("## 分析说明", skill)
 
@@ -113,6 +118,9 @@ class SkillProjectTest(unittest.TestCase):
         self.assertIn("文字规划模式", readme)
         self.assertIn("推荐输入结构", readme)
         self.assertIn("动态澄清", readme)
+        self.assertIn("主题确认", readme)
+        self.assertIn("自定义主题入口", readme)
+        self.assertIn("主题强相关", readme)
         self.assertIn("选项框", readme)
         for needle in (
             "风景图生成治愈文案",
@@ -132,8 +140,21 @@ class SkillProjectTest(unittest.TestCase):
             "references/trend_keywords.md": ["2026 小红书趋势向热词", "长期可用的轻热词", "风险边界"],
             "references/meme_sentence_patterns.md": ["标题句式", "开头句式", "赛道适配"],
             "references/trend_update_rules.md": ["何时需要更新", "推荐校验流程", "降级策略"],
-            "references/dynamic_clarification.md": ["需求完整度判断", "客户端原生", "动态生成问题", "联网辅助提问", "不要声称已弹出选项框"],
-            "references/live_formula_refresh.md": ["联网不可用", "回退到内置公式库", "搜索查询"],
+            "references/dynamic_clarification.md": [
+                "强制确认主题",
+                "图片主题确认",
+                "文字主题确认",
+                "自定义主题入口",
+                "内容方向",
+                "字数范围",
+                "内容风格",
+                "客户端原生",
+                "动态生成问题",
+                "联网辅助提问",
+                "不要声称已弹出选项框",
+            ],
+            "references/topic_selection.md": ["主题确认", "选题建议", "自定义输入主题", "未确认主题不得生成最终笔记"],
+            "references/live_formula_refresh.md": ["联网不可用", "回退到内置公式库", "搜索查询", "已确认主题", "实时新闻", "热梗", "主题强相关"],
             "references/image_understanding_prompt.md": ["当前农历日期", "可见事实", "合理推断", "不确定信息", "社会热点"],
             "references/risk_checklist.md": ["AI 生成内容", "发布前检查清单"],
         }

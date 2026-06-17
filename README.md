@@ -140,6 +140,7 @@
 - **生图**：为每张配图生成 Prompt，也可接入 OpenAI-compatible Images API。
 - **澄清**：需求不完整时先做动态澄清，必要时给出选项框或 1-3 个关键问题。
 - **风控**：检查夸大表达、功效承诺、违禁词、敏感赛道和 AI 图片标注。
+- **复盘**：基于发布后数据、截图或公开链接做全链路诊断，并生成本地 HTML 可视化看板。
 
 ## 功能
 
@@ -153,6 +154,8 @@
 | 主题确认与动态澄清 | 像头脑风暴一样主动提问，先确认主题，再补问方向、字数和风格 |
 | 直接生图 | 通过本地配置调用 OpenAI-compatible Images API |
 | 风险检查 | 检查夸大表达、敏感赛道、违禁词、功效承诺和 AI 生成标注 |
+| 发布后复盘 | 支持手动数据、截图识别、单篇链接和主页链接，输出六维评分、诊断和下一篇实验卡 |
+| HTML 看板 | 生成离线单文件 HTML，内嵌用户图片、六维雷达图、柱状图、饼图和连线图 |
 
 ## 一分钟上手
 
@@ -168,6 +171,10 @@
 
 ```text
 把这段草稿改成小红书笔记，保留真实经历，增强标题、正文节奏、标签和评论钩子。
+```
+
+```text
+复盘这篇小红书笔记的数据，并生成一个本地 HTML 看板。
 ```
 
 同一会话里可以继续多轮修改，不需要每次重复 Skill 名称：
@@ -213,6 +220,7 @@
 | 已有草稿 | 草稿优化 | 标题重写、正文重排、标签补充、风险改写 |
 | 需要图片 | 文字规划 + 生图 | Prompt、图片生成、输出文件路径 |
 | 准备发布前检查 | 风险检查 | 风险词标注、替代表达、安全版本 |
+| 已发布笔记、截图或链接 | 发布后复盘 | 六维评分、全链路诊断、下一篇实验卡、本地 HTML 看板 |
 
 ## 首次执行会先确认什么
 
@@ -347,6 +355,71 @@ Skill 默认先给 `可复制发布区`，把图片、标题、正文、标签�
 - 风险检查
 - 发布提示
 ````
+
+## 发布后复盘 HTML 看板
+
+当用户说“复盘这篇”“分析这个链接表现”“生成复盘报告/HTML 看板”时，Skill 会进入发布后复盘模式。这个模式不强制重新确认主题；只有用户要求基于复盘结果生成下一篇完整笔记时，才回到主题确认和选题流程。
+
+支持的输入：
+
+- 手动数据：标题、正文、标签、发布时间、曝光、阅读/点击、点赞、收藏、评论、分享、关注、转化等。
+- 截图识别：笔记页、创作中心或数据截图；截图需先打码昵称、头像、私信、订单和后台敏感数据。
+- 单篇链接：只读取公开可见的标题、正文、标签、图片和互动数。
+- 主页链接：只读取公开可见的主页和当前可加载笔记；遇到验证码、权限限制或加载失败时，改用截图或文字信息。
+
+复盘会输出总分、六维评分、全链路诊断和下一篇实验卡。需要网页时，Agent 会把复盘结果整理成 JSON，并调用本地脚本生成离线单文件 HTML：
+
+```bash
+python3 scripts/generate_review_report.py --input review.json --output-dir outputs/reports
+```
+
+JSON 示例：
+
+```json
+{
+  "note": {
+    "title": "工作日中午，我偷偷去咖啡厅充了个电",
+    "body": "工作日中午，突然不想把午休也过得很赶...",
+    "tags": ["工作日午休", "打工人自救", "咖啡厅日常"],
+    "published_at": "2026-06-17 12:30",
+    "goal": "提升收藏和评论",
+    "link": "https://www.xiaohongshu.com/explore/example",
+    "images": ["assets/showcase/cafe-window.jpg"]
+  },
+  "metrics": {
+    "exposure": 3200,
+    "views": 680,
+    "likes": 96,
+    "favorites": 42,
+    "comments": 11,
+    "shares": 8,
+    "follows": 5
+  },
+  "scores": {
+    "入口吸引力": {"score": 76, "evidence": "封面有场景感，但标题利益点还可以更明确。", "confidence": "中"},
+    "标题搜索力": {"score": 68, "evidence": "有场景词，但缺少更明确的搜索关键词。", "confidence": "中"},
+    "正文承接力": {"score": 82, "evidence": "开头有真实情绪，正文节奏顺。", "confidence": "高"},
+    "收藏价值": {"score": 61, "evidence": "情绪价值强，但可复用信息偏少。", "confidence": "中"},
+    "评论互动": {"score": 58, "evidence": "评论钩子偏温和，讨论空间不够具体。", "confidence": "中"},
+    "转化/关注潜力": {"score": 64, "evidence": "账号系列感还可以继续强化。", "confidence": "低"}
+  },
+  "diagnosis": {
+    "problems": [{"title": "收藏价值偏弱", "evidence": "收藏数低于点赞，正文缺少清单或路线。"}],
+    "hypotheses": [{"title": "封面吸引了情绪人群", "evidence": "点击后互动集中在点赞，说明共鸣强但实用性不足。"}],
+    "risks": [{"title": "不要夸大疗愈效果", "risk": "保持个人体验表达。"}]
+  },
+  "experiments": [
+    {"title": "下一篇改成午休自救清单", "change": "封面写 3 个可复制动作，正文加入路线/预算/时长。", "success_metric": "收藏率提升"}
+  ]
+}
+```
+
+HTML 看板包含：
+
+- 用户输入图片、标题、正文、标签和链接。
+- 总分、六维雷达图、指标柱状图、互动占比饼图。
+- “输入内容 -> 数据表现 -> 诊断原因 -> 下一篇实验”的连线图。
+- 主要问题排序、原因假设、风险边界和下一篇建议。
 
 ## 使用案例
 
@@ -502,6 +575,30 @@ provider 是 openai-compatible，base_url 是 https://api.example.com/v1，model
 
 </details>
 
+<details>
+<summary>案例 13：发布后复盘并生成 HTML 看板</summary>
+
+适合：笔记发出后想复盘表现、定位问题，并为下一篇制定实验方向。
+
+```text
+请用 xhs-notes-skill 复盘这篇小红书笔记，并生成本地 HTML 看板。
+我可以提供手动数据、截图、单篇链接或主页链接。
+
+标题：工作日中午，我偷偷去咖啡厅充了个电
+发布时间：2026-06-17 12:30
+曝光：3200
+阅读：680
+点赞：96
+收藏：42
+评论：11
+分享：8
+目标：提升收藏和评论
+
+要求：给总分、六维评分、雷达图、柱状图、饼图、连线图、全链路诊断和下一篇实验卡。
+```
+
+</details>
+
 ## 生图配置
 
 仓库不会提交真实 API Key。首次使用直接生图前，复制配置模板：
@@ -564,6 +661,24 @@ python3 scripts/generate_images.py --prompts prompts.json --output-dir outputs/i
 python3 scripts/generate_images.py --prompts prompts.json --dry-run
 ```
 
+## 复盘报告脚本
+
+`scripts/generate_review_report.py` 用于把 AI 整理好的复盘 JSON 渲染成本地 HTML 看板。它不依赖 CDN 或外部图表库，默认把本地图片转成 base64 内嵌到单个 HTML 文件中。
+
+运行：
+
+```bash
+python3 scripts/generate_review_report.py --input review.json --output-dir outputs/reports
+```
+
+指定文件名：
+
+```bash
+python3 scripts/generate_review_report.py --input review.json --report-id cafe-review
+```
+
+生成的 HTML 会包含用户笔记内容、总分、六维评分、六维雷达图、指标柱状图、互动占比饼图、连线图、全链路诊断和下一篇建议。
+
 ## 目录结构
 
 ```text
@@ -576,6 +691,7 @@ xhs-notes-skill/
 │   └── image_model.example.json
 ├── scripts/
 │   ├── generate_images.py
+│   ├── generate_review_report.py
 │   └── validate_skill.py
 ├── references/
 │   ├── title_formulas.md
@@ -589,6 +705,7 @@ xhs-notes-skill/
 │   ├── topic_selection.md
 │   ├── live_formula_refresh.md
 │   ├── image_understanding_prompt.md
+│   ├── post_publish_review.md
 │   ├── risk_checklist.md
 │   └── prompts/
 │       ├── composition.md

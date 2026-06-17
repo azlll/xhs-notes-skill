@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 import subprocess
@@ -35,6 +36,17 @@ class SkillProjectTest(unittest.TestCase):
         self.addCleanup(lambda: Path(tmp.name).unlink(missing_ok=True))
         return tmp.name
 
+    def write_json(self, payload):
+        return self.write_prompts(payload)
+
+    def write_png(self):
+        payload = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII="
+        tmp = tempfile.NamedTemporaryFile("wb", suffix=".png", delete=False)
+        with tmp:
+            tmp.write(base64.b64decode(payload))
+        self.addCleanup(lambda: Path(tmp.name).unlink(missing_ok=True))
+        return tmp.name
+
     def test_validate_skill_passes(self):
         result = self.run_python(["scripts/validate_skill.py"])
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
@@ -54,6 +66,8 @@ class SkillProjectTest(unittest.TestCase):
         self.assertIn("references/topic_selection.md", skill)
         self.assertIn("references/live_formula_refresh.md", skill)
         self.assertIn("references/image_understanding_prompt.md", skill)
+        self.assertIn("references/post_publish_review.md", skill)
+        self.assertIn("scripts/generate_review_report.py", skill)
         self.assertIn("动态澄清规则", skill)
         self.assertIn("强制确认主题", skill)
         self.assertIn("未确认主题不得生成最终笔记", skill)
@@ -62,6 +76,9 @@ class SkillProjectTest(unittest.TestCase):
         self.assertIn("公式联网刷新", skill)
         self.assertIn("图片理解提示词", skill)
         self.assertIn("智能选题", skill)
+        self.assertIn("发布后复盘模式", skill)
+        self.assertIn("HTML 看板", skill)
+        self.assertIn("六维评分", skill)
         self.assertIn("## 可复制发布区", skill)
         self.assertIn("## 分析说明", skill)
 
@@ -103,6 +120,73 @@ class SkillProjectTest(unittest.TestCase):
         self.assertEqual(payload["requests"][0]["model"], "test-image-model")
         self.assertEqual(payload["requests"][0]["prompt"], "一张适合小红书的番茄鸡蛋面封面图")
 
+    def test_generate_review_report_html(self):
+        image_path = self.write_png()
+        review_path = self.write_json(
+            {
+                "report_id": "unit-review",
+                "note": {
+                    "title": "工作日中午，我偷偷去咖啡厅充了个电",
+                    "body": "工作日中午，突然不想把午休也过得很赶。",
+                    "tags": ["工作日午休", "打工人自救", "咖啡厅日常"],
+                    "published_at": "2026-06-17 12:30",
+                    "goal": "提升收藏和评论",
+                    "link": "https://www.xiaohongshu.com/explore/example",
+                    "images": [image_path],
+                },
+                "metrics": {
+                    "exposure": 3200,
+                    "views": 680,
+                    "likes": 96,
+                    "favorites": 42,
+                    "comments": 11,
+                    "shares": 8,
+                    "follows": 5,
+                },
+                "scores": {
+                    "入口吸引力": {"score": 76, "evidence": "封面有场景感。", "confidence": "中"},
+                    "标题搜索力": {"score": 68, "evidence": "有场景词。", "confidence": "中"},
+                    "正文承接力": {"score": 82, "evidence": "开头真实。", "confidence": "高"},
+                    "收藏价值": {"score": 61, "evidence": "清单信息偏少。", "confidence": "中"},
+                    "评论互动": {"score": 58, "evidence": "评论钩子偏温和。", "confidence": "中"},
+                    "转化/关注潜力": {"score": 64, "evidence": "系列感可强化。", "confidence": "低"},
+                },
+                "diagnosis": {
+                    "problems": [{"title": "收藏价值偏弱", "evidence": "收藏数低于点赞。"}],
+                    "hypotheses": [{"title": "情绪共鸣强", "evidence": "点赞表现更突出。"}],
+                    "risks": [{"title": "审慎表达", "risk": "不要夸大疗愈效果。"}],
+                },
+                "experiments": [
+                    {
+                        "title": "下一篇改成午休自救清单",
+                        "change": "封面写 3 个可复制动作。",
+                        "success_metric": "收藏率提升",
+                    }
+                ],
+            }
+        )
+        output = tempfile.NamedTemporaryFile("w", suffix=".html", delete=False)
+        output.close()
+        self.addCleanup(lambda: Path(output.name).unlink(missing_ok=True))
+
+        result = self.run_python(["scripts/generate_review_report.py", "--input", review_path, "--output", output.name])
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["status"], "ok")
+        html = Path(output.name).read_text(encoding="utf-8")
+        self.assertIn("工作日中午，我偷偷去咖啡厅充了个电", html)
+        self.assertIn("data:image/png;base64", html)
+        self.assertIn("<svg", html)
+        self.assertIn("六维评分", html)
+        self.assertIn("六维雷达图", html)
+        self.assertIn("指标柱状图", html)
+        self.assertIn("互动占比饼图", html)
+        self.assertIn("连线图", html)
+        self.assertIn("下一篇建议", html)
+        self.assertIn("下一篇改成午休自救清单", html)
+        for forbidden in ("cdn.jsdelivr", "cdnjs", "unpkg"):
+            self.assertNotIn(forbidden, html)
+
     def test_readme_usage_cases(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn("## 一分钟上手", readme)
@@ -122,12 +206,20 @@ class SkillProjectTest(unittest.TestCase):
         self.assertIn("自定义主题入口", readme)
         self.assertIn("主题强相关", readme)
         self.assertIn("选项框", readme)
+        self.assertIn("发布后复盘 HTML 看板", readme)
+        self.assertIn("复盘报告脚本", readme)
+        self.assertIn("六维雷达图", readme)
+        self.assertIn("指标柱状图", readme)
+        self.assertIn("互动占比饼图", readme)
+        self.assertIn("连线图", readme)
+        self.assertIn("下一篇实验卡", readme)
         for needle in (
             "风景图生成治愈文案",
             "AI 插画生成热梗风笔记",
             "只有主题，规划完整图文笔记",
             "直接生成图片",
             "发布前风险检查和改写",
+            "发布后复盘并生成 HTML 看板",
         ):
             self.assertIn(needle, readme)
 
@@ -156,6 +248,20 @@ class SkillProjectTest(unittest.TestCase):
             "references/topic_selection.md": ["主题确认", "选题建议", "自定义输入主题", "未确认主题不得生成最终笔记"],
             "references/live_formula_refresh.md": ["联网不可用", "回退到内置公式库", "搜索查询", "已确认主题", "实时新闻", "热梗", "主题强相关"],
             "references/image_understanding_prompt.md": ["当前农历日期", "可见事实", "合理推断", "不确定信息", "社会热点"],
+            "references/post_publish_review.md": [
+                "发布后复盘",
+                "手动数据",
+                "截图识别",
+                "单篇链接",
+                "主页链接",
+                "公开可见信息",
+                "六维评分",
+                "六维雷达图",
+                "指标柱状图",
+                "互动占比饼图",
+                "连线图",
+                "下一篇实验卡",
+            ],
             "references/risk_checklist.md": ["AI 生成内容", "发布前检查清单"],
         }
         for relative_path, needles in checks.items():

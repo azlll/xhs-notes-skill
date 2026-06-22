@@ -30,7 +30,7 @@ DIMENSIONS = [
 
 METRICS = [
     ("exposure", "曝光", ["曝光", "展现", "impressions"]),
-    ("views", "阅读/点击", ["阅读", "点击", "浏览", "观看", "views", "clicks"]),
+    ("views", "小眼睛/观看", ["小眼睛", "观看", "阅读", "查看", "点击", "浏览", "views", "clicks"]),
     ("likes", "点赞", ["点赞", "赞", "likes"]),
     ("favorites", "收藏", ["收藏", "fav", "favorites", "collects"]),
     ("comments", "评论", ["评论", "comments"]),
@@ -139,6 +139,116 @@ def normalize_metrics(raw: Any) -> list[dict[str, Any]]:
         value = metric_value(metrics, key, aliases)
         result.append({"key": key, "label": label, "value": value})
     return result
+
+
+def metrics_by_key(metrics: list[dict[str, Any]]) -> dict[str, float | None]:
+    return {item["key"]: item.get("value") for item in metrics}
+
+
+def percent_text(numerator: float | None, denominator: float | None) -> str:
+    if numerator is None or denominator is None or denominator <= 0:
+        return "数据不足"
+    return f"{numerator / denominator * 100:.1f}%"
+
+
+def as_text_list(value: Any) -> list[str]:
+    if value is None or value == "":
+        return []
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    if isinstance(value, dict):
+        return [str(item).strip() for item in value.values() if str(item).strip()]
+    return [item.strip() for item in re.split(r"[,，\n]+", str(value)) if item.strip()]
+
+
+def chip_list(items: list[str], empty: str = "待补充") -> str:
+    if not items:
+        return f'<span class="muted">{escape(empty)}</span>'
+    return "".join(f'<span class="chip">{escape(item)}</span>' for item in items)
+
+
+def traffic_conclusion(traffic: dict[str, Any], values: dict[str, float | None]) -> str:
+    explicit = traffic.get("conclusion") or traffic.get("数据结论")
+    if explicit:
+        return str(explicit)
+    views = values.get("views")
+    likes = values.get("likes")
+    favorites = values.get("favorites")
+    comments = values.get("comments")
+    shares = values.get("shares")
+    if views is None:
+        return "缺少小眼睛/观看数，无法完整判断点击与流量质量；当前只能基于公开互动做弱判断。"
+    if favorites is not None and likes is not None and favorites > likes:
+        return "收藏强于点赞，内容更像资料型或工具型，用户有保存后再用的动机。"
+    if comments and views and comments / views >= 0.02:
+        return "评论率相对突出，内容具备讨论或需求反馈价值。"
+    if shares and views and shares / views >= 0.03:
+        return "分享率值得关注，内容可能具备转发给同类人群的价值。"
+    return "已拿到观看数据，可结合互动率判断内容承接；仍建议补充曝光来判断封面标题点击效率。"
+
+
+def traffic_issue(traffic: dict[str, Any], values: dict[str, float | None]) -> str:
+    explicit = traffic.get("funnel_issue") or traffic.get("流量卡点")
+    if explicit:
+        return str(explicit)
+    if values.get("views") is None:
+        return "卡点待确认：缺少小眼睛/观看数。"
+    if values.get("exposure") is None:
+        return "点击卡点只能弱判断：缺少曝光，无法计算观看/曝光转化。"
+    interaction_total = sum(values.get(key) or 0 for key in ("likes", "favorites", "comments", "shares"))
+    if values["views"] and interaction_total / values["views"] < 0.05:
+        return "更可能卡在内容承接或互动设计，观看后互动率偏弱。"
+    return "当前更适合继续验证封面标题点击和精准人群匹配。"
+
+
+def cover_title_diagnosis(traffic: dict[str, Any], values: dict[str, float | None]) -> str:
+    explicit = traffic.get("cover_title_diagnosis") or traffic.get("封面标题点击诊断")
+    if explicit:
+        return str(explicit)
+    if values.get("views") is None:
+        return "缺少小眼睛/观看数，无法判断封面标题实际吸引了多少点击。"
+    if values.get("exposure") is None:
+        return "缺少曝光，只能根据封面、标题和互动结构做弱判断；建议补充曝光后再看点击效率。"
+    return f"观看/曝光转化为 {percent_text(values.get('views'), values.get('exposure'))}，可结合封面标题判断入口吸引力。"
+
+
+def rate_rows(values: dict[str, float | None]) -> str:
+    views = values.get("views")
+    rows = [
+        ("观看/曝光", values.get("views"), values.get("exposure"), "入口点击效率"),
+        ("点赞率", values.get("likes"), views, "即时认可"),
+        ("收藏率", values.get("favorites"), views, "复用价值"),
+        ("评论率", values.get("comments"), views, "讨论反馈"),
+        ("分享率", values.get("shares"), views, "传播价值"),
+    ]
+    return "".join(
+        "<tr>"
+        f"<td>{escape(label)}</td>"
+        f"<td>{escape(percent_text(num, den))}</td>"
+        f"<td>{escape(format_number(num))}</td>"
+        f"<td>{escape(format_number(den))}</td>"
+        f"<td>{escape(note)}</td>"
+        "</tr>"
+        for label, num, den, note in rows
+    )
+
+
+def funnel_html(values: dict[str, float | None]) -> str:
+    interaction_total = sum(values.get(key) or 0 for key in ("likes", "favorites", "comments", "shares"))
+    steps = [
+        ("曝光", values.get("exposure"), "初始分发"),
+        ("小眼睛/观看", values.get("views"), "点进或查看"),
+        ("互动合计", interaction_total if interaction_total > 0 else None, "赞藏评享"),
+        ("关注/转化", (values.get("follows") or 0) + (values.get("conversions") or 0) or None, "后续动作"),
+    ]
+    return "".join(
+        '<div class="funnel-step">'
+        f'<span>{escape(label)}</span>'
+        f'<strong>{escape(format_number(value))}</strong>'
+        f'<em>{escape(note)}</em>'
+        '</div>'
+        for label, value, note in steps
+    )
 
 
 def find_score_entry(raw_scores: Any, dimension: str) -> Any:
@@ -422,15 +532,17 @@ def svg_lines(text: str, x: int, y: int, width: int = 10) -> str:
 
 def flow_chart(note: dict[str, Any], metrics: list[dict[str, Any]], problems: list[dict[str, str]], experiments: list[dict[str, str]]) -> str:
     title = str(note.get("title") or "笔记内容")
-    strongest_metric = next((item for item in metrics if item.get("value") is not None), {"label": "数据表现", "value": None})
-    metric_text = f"{strongest_metric['label']} {format_number(strongest_metric.get('value'))}"
+    values = metrics_by_key(metrics)
+    views = values.get("views")
+    interaction_total = sum(values.get(key) or 0 for key in ("likes", "favorites", "comments", "shares"))
+    metric_text = f"观看 {format_number(views)} / 互动 {format_number(interaction_total if interaction_total > 0 else None)}"
     problem = problems[0]["title"] if problems else "等待更多数据验证"
     experiment = experiments[0]["title"] if experiments else "下一篇实验待定"
     nodes = [
-        ("输入内容", title, 40, 56, "#ff2442"),
-        ("数据表现", metric_text, 270, 56, "#0f766e"),
-        ("诊断原因", problem, 500, 56, "#f59e0b"),
-        ("下一篇实验", experiment, 730, 56, "#7c3aed"),
+        ("内容入口", title, 40, 56, "#ff2442"),
+        ("观看/互动", metric_text, 270, 56, "#0f766e"),
+        ("流量卡点", problem, 500, 56, "#f59e0b"),
+        ("行动建议", experiment, 730, 56, "#7c3aed"),
     ]
     node_svg = []
     for heading, body, x, y, color in nodes:
@@ -443,7 +555,7 @@ def flow_chart(note: dict[str, Any], metrics: list[dict[str, Any]], problems: li
     for x1, x2 in ((220, 270), (450, 500), (680, 730)):
         arrows.append(f'<line x1="{x1}" y1="102" x2="{x2 - 12}" y2="102" class="flow-line" marker-end="url(#arrow)"/>')
     return (
-        '<svg class="flow-chart" viewBox="0 0 950 206" role="img" aria-label="连线图">'
+        '<svg class="flow-chart" viewBox="0 0 950 206" role="img" aria-label="流量诊断连线图">'
         '<defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">'
         '<path d="M0,0 L10,4 L0,8 Z" fill="#636363"/></marker></defs>'
         + "".join(arrows)
@@ -479,16 +591,50 @@ def score_cards(scores: list[dict[str, Any]]) -> str:
 def render_html(data: dict[str, Any], source_dir: Path) -> str:
     note = data.get("note") if isinstance(data.get("note"), dict) else {}
     metrics = normalize_metrics(data.get("metrics"))
+    values = metrics_by_key(metrics)
     scores = normalize_scores(data.get("scores"))
     total = average_score(scores)
     total_text = "数据不足" if total is None else f"{total:.0f}"
     tags = normalize_tags(note.get("tags") or note.get("标签"))
     images = normalize_images(note, source_dir)
     diagnosis = data.get("diagnosis") if isinstance(data.get("diagnosis"), dict) else {}
+    traffic = data.get("traffic") if isinstance(data.get("traffic"), dict) else {}
+    keyword_data = data.get("audience_keywords") or data.get("keyword_research") or data.get("关键词匹配")
+    audience_keywords = keyword_data if isinstance(keyword_data, dict) else {}
     problems = as_items(diagnosis.get("problems") or diagnosis.get("问题排序") or diagnosis.get("issues"))
     hypotheses = as_items(diagnosis.get("hypotheses") or diagnosis.get("原因假设") or diagnosis.get("reasons"))
     risks = as_items(diagnosis.get("risks") or diagnosis.get("风险边界") or diagnosis.get("risk"))
-    experiments = as_items(data.get("experiments") or data.get("下一篇实验卡") or data.get("next_experiments"))
+    current_actions = as_items(traffic.get("current_actions") or traffic.get("当前补救动作") or data.get("current_actions"))
+    experiments = as_items(
+        traffic.get("next_iteration")
+        or traffic.get("下一篇迭代")
+        or data.get("experiments")
+        or data.get("下一篇实验卡")
+        or data.get("next_experiments")
+    )
+    conclusion = traffic_conclusion(traffic, values)
+    funnel_issue = traffic_issue(traffic, values)
+    click_diagnosis = cover_title_diagnosis(traffic, values)
+    incomplete_notice = ""
+    if values.get("views") is None:
+        incomplete_notice = "不完整流量诊断：缺少小眼睛/观看数，无法完整判断点击与流量质量。"
+    audience_items = as_text_list(
+        audience_keywords.get("target_audience")
+        or audience_keywords.get("目标人群")
+        or audience_keywords.get("audiences")
+    )
+    keyword_items = as_text_list(
+        audience_keywords.get("keywords")
+        or audience_keywords.get("search_keywords")
+        or audience_keywords.get("搜索关键词")
+    )
+    hot_tag_items = as_text_list(audience_keywords.get("hot_tags") or audience_keywords.get("热门标签"))
+    title_patterns = as_text_list(audience_keywords.get("title_patterns") or audience_keywords.get("标题表达"))
+    match_diagnosis = str(
+        audience_keywords.get("match_diagnosis")
+        or audience_keywords.get("目标人群与关键词匹配判断")
+        or "未提供联网关键词校验结果，请在复盘时补充同类笔记目标人群、搜索关键词、热门标签和标题表达。"
+    )
     image_html = ""
     for image in images:
         if image["src"]:
@@ -518,7 +664,7 @@ body {
 }
 .page { max-width: 1180px; margin: 0 auto; padding: 32px 22px 56px; }
 .hero {
-  display: grid; grid-template-columns: minmax(0, 1fr) 190px; gap: 28px; align-items: center;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 0.9fr); gap: 28px; align-items: stretch;
   padding: 30px; background: #ffffff; border: 1px solid #f0d7cf; border-radius: 8px;
   box-shadow: 0 18px 48px rgba(90, 45, 28, 0.10);
 }
@@ -526,6 +672,10 @@ body {
 h1 { margin: 0; font-size: 34px; line-height: 1.18; letter-spacing: 0; }
 .meta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; color: #616168; }
 .meta span { padding: 7px 10px; background: #fff3ee; border-radius: 8px; }
+.hero-panel { padding: 18px; border: 1px solid #f1ddd4; border-radius: 8px; background: #fffaf7; }
+.hero-panel h2 { margin-bottom: 10px; }
+.hero-panel p { margin: 0; line-height: 1.7; color: #42424a; }
+.notice { margin-top: 12px; padding: 10px 12px; color: #9f1239; background: #fff1f2; border: 1px solid #fecdd3; border-radius: 8px; font-weight: 650; }
 .total-score {
   width: 170px; height: 170px; border-radius: 50%; display: grid; place-items: center;
   background: radial-gradient(circle at center, #fff 54%, transparent 55%), conic-gradient(#ff2442 0 70%, #0f766e 70% 88%, #f3c86d 88% 100%);
@@ -536,6 +686,20 @@ section { margin-top: 24px; padding: 24px; background: #ffffff; border: 1px soli
 h2 { margin: 0 0 18px; font-size: 22px; letter-spacing: 0; }
 h3 { margin: 0 0 14px; font-size: 17px; letter-spacing: 0; }
 .grid-2 { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); gap: 22px; }
+.insight-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+.insight-card { padding: 18px; border: 1px solid #eee1da; border-radius: 8px; background: #fffdfa; }
+.insight-card span { display: block; margin-bottom: 8px; color: #777; font-size: 13px; }
+.insight-card strong { display: block; margin-bottom: 8px; color: #1f1f23; font-size: 18px; }
+.insight-card p { margin: 0; line-height: 1.65; color: #55565d; }
+.funnel-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.funnel-step { position: relative; padding: 16px; min-height: 120px; border: 1px solid #ead7cf; border-radius: 8px; background: #fffdfa; }
+.funnel-step span { display: block; color: #777; font-size: 13px; }
+.funnel-step strong { display: block; margin: 10px 0 8px; color: #ff2442; font-size: 24px; }
+.funnel-step em { color: #55565d; font-style: normal; }
+.rate-table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 14px; }
+.rate-table th, .rate-table td { padding: 10px 9px; border-bottom: 1px solid #eee1da; text-align: left; }
+.rate-table th { color: #666; background: #fff7f2; }
+.chip { display: inline-block; margin: 0 8px 8px 0; padding: 7px 10px; color: #115e59; background: #ecfdf5; border-radius: 8px; font-weight: 650; }
 .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
 .image-tile { margin: 0; border: 1px solid #eee1da; border-radius: 8px; overflow: hidden; background: #fffaf7; }
 .image-tile img { width: 100%; height: 220px; object-fit: cover; display: block; }
@@ -570,7 +734,7 @@ h3 { margin: 0 0 14px; font-size: 17px; letter-spacing: 0; }
 .flow-heading { font-size: 15px; font-weight: 800; }
 .footer-note { margin-top: 18px; color: #777; font-size: 13px; line-height: 1.7; }
 @media (max-width: 760px) {
-  .hero, .grid-2, .charts, .pie-wrap { grid-template-columns: 1fr; }
+  .hero, .grid-2, .charts, .pie-wrap, .funnel-grid { grid-template-columns: 1fr; }
   h1 { font-size: 26px; }
   .total-score { width: 140px; height: 140px; }
 }
@@ -594,7 +758,7 @@ h3 { margin: 0 0 14px; font-size: 17px; letter-spacing: 0; }
   <main class="page">
     <header class="hero">
       <div>
-        <p class="eyebrow">发布后复盘 HTML 看板</p>
+        <p class="eyebrow">发布后复盘 HTML 看板 · 流量诊断优先</p>
         <h1>{escape(title)}</h1>
         <div class="meta">
           <span>发布时间：{escape(str(published_at))}</span>
@@ -603,66 +767,97 @@ h3 { margin: 0 0 14px; font-size: 17px; letter-spacing: 0; }
           <span>主页链接：{escape(str(profile_link or "未提供"))}</span>
         </div>
       </div>
-      <div class="total-score"><div><strong>{escape(total_text)}</strong><span>总分 / 100</span></div></div>
+      <aside class="hero-panel">
+        <h2>数据结论</h2>
+        <p>{escape(conclusion)}</p>
+        {f'<div class="notice">{escape(incomplete_notice)}</div>' if incomplete_notice else ''}
+      </aside>
     </header>
 
     <section>
-      <h2>用户输入内容</h2>
+      <h2>流量来自哪里，卡在哪一段</h2>
+      <div class="funnel-grid">{funnel_html(values)}</div>
+      <table class="rate-table">
+        <thead><tr><th>指标</th><th>比率</th><th>分子</th><th>分母</th><th>用途</th></tr></thead>
+        <tbody>{rate_rows(values)}</tbody>
+      </table>
+      <div class="insight-grid" style="margin-top:16px">
+        <article class="insight-card"><span>流量卡点</span><strong>{escape(funnel_issue)}</strong><p>缺失字段不会被推断；需要后台数据时会明确标注。</p></article>
+        <article class="insight-card"><span>点击判断</span><strong>{escape(click_diagnosis)}</strong><p>曝光和小眼睛同时存在时，才判断封面标题点击效率。</p></article>
+      </div>
+    </section>
+
+    <section>
+      <h2>封面和标题是否吸引点击</h2>
       <div class="grid-2">
         <div>
-          <h3>图片与封面</h3>
+          <h3>封面/首图</h3>
           <div class="gallery">{image_html}</div>
         </div>
+        <article class="insight-card">
+          <span>点击诊断</span>
+          <strong>{escape(click_diagnosis)}</strong>
+          <p>重点看首图是否能让目标人群一眼识别“这篇和我有关”，标题是否给出明确利益点、问题词或长尾关键词。</p>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2>目标人群与关键词是否匹配</h2>
+      <p class="note-body">{escape(match_diagnosis)}</p>
+      <div class="insight-grid" style="margin-top:16px">
+        <article class="insight-card"><span>目标人群</span>{chip_list(audience_items, "待联网搜索或人工补充")}</article>
+        <article class="insight-card"><span>搜索关键词</span>{chip_list(keyword_items, "待联网搜索或人工补充")}</article>
+        <article class="insight-card"><span>热门标签</span>{chip_list(hot_tag_items, "待联网搜索或人工补充")}</article>
+        <article class="insight-card"><span>常见标题表达</span>{chip_list(title_patterns, "待联网搜索或人工补充")}</article>
+      </div>
+    </section>
+
+    <section>
+      <h2>当前这篇还能补救什么</h2>
+      <div class="mini-grid">{list_cards(current_actions, "暂无当前补救动作。建议优先补置顶评论、回复高价值评论、完善主页承接入口。")}</div>
+    </section>
+
+    <section>
+      <h2>下一篇怎么迭代</h2>
+      <div class="mini-grid">{list_cards(experiments, "暂无下一篇实验卡。")}</div>
+    </section>
+
+    <section>
+      <h2>证据附录</h2>
+      <div class="grid-2">
         <div>
           <h3>正文与标签</h3>
           <div class="note-body">{text_block(note.get("body") or note.get("正文"))}</div>
           <div style="margin-top:16px">{tag_html(tags)}</div>
         </div>
-      </div>
-    </section>
-
-    <section>
-      <h2>数据图表</h2>
-      <div class="charts">
         <div class="chart-card">
           <h3>指标柱状图</h3>
           {bar_chart(metrics)}
         </div>
+      </div>
+      <div class="charts" style="margin-top:20px">
         <div class="chart-card">
           <h3>互动占比饼图</h3>
           {pie_chart(metrics)}
         </div>
+        <div class="chart-card">
+          <h3>连线图</h3>
+          <div class="flow-wrap">{flow_chart(note, metrics, problems, experiments)}</div>
+        </div>
       </div>
-    </section>
-
-    <section>
-      <h2>六维评分</h2>
+      <h3 style="margin-top:22px">参考评分（六维评分弱化）</h3>
+      <p class="footer-note">参考评分只作为附录，不作为主结论；流量判断以小眼睛/观看、曝光和互动率为准。参考总分：{escape(total_text)} / 100。</p>
       <div class="charts">
         <div class="chart-card">
-          <h3>六维雷达图</h3>
+          <h3>六维雷达图（附录）</h3>
           {radar_chart(scores)}
         </div>
         <div class="score-grid">{score_cards(scores)}</div>
       </div>
-    </section>
-
-    <section>
-      <h2>连线图</h2>
-      <div class="flow-wrap">{flow_chart(note, metrics, problems, experiments)}</div>
-    </section>
-
-    <section>
-      <h2>全链路诊断</h2>
-      <div class="mini-grid">{list_cards(problems, "暂无问题排序，请补充更多表现数据。")}</div>
-      <h3 style="margin-top:22px">原因假设</h3>
+      <h3 style="margin-top:22px">原因假设与风险边界</h3>
       <div class="mini-grid">{list_cards(hypotheses, "暂无原因假设。")}</div>
-      <h3 style="margin-top:22px">风险边界</h3>
-      <div class="mini-grid">{list_cards(risks, "暂无额外风险。")}</div>
-    </section>
-
-    <section>
-      <h2>下一篇建议</h2>
-      <div class="mini-grid">{list_cards(experiments, "暂无下一篇实验卡。")}</div>
+      <div class="mini-grid" style="margin-top:14px">{list_cards(risks, "暂无额外风险。")}</div>
       <p class="footer-note">本报告只基于已提供或公开可见数据生成。缺失字段未做推断，所有结论应理解为可能原因和下一轮实验假设。</p>
     </section>
   </main>

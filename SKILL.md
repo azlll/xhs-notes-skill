@@ -33,6 +33,7 @@ compatibility: 适用于支持读取本地文件和图片的 Agent；直接生�
 - 用户要求“最新/近期/今日/本周”热梗热词时，先按 [热梗热词更新规则](references/trend_update_rules.md) 校验时效，再决定是否使用。
 - 用户提供图片时，先读取 [图片理解提示词](references/image_understanding_prompt.md)。
 - 需要合规、违禁词替换或 AI 标注时，读取 [风险清单](references/risk_checklist.md)。
+- 调用生图脚本或 HTML 报告脚本前，先按 [脚本降级输出规则](references/fallback_outputs.md) 判断脚本、Python 环境和输出目录是否可用；不可用时改用纯文本降级输出。
 - 需要复盘已发布笔记、分析数据、处理笔记链接/主页链接或生成 HTML 看板时，读取 [发布后复盘规则](references/post_publish_review.md)。
 - 需要图片生成 Prompt 时，读取 [构图技巧](references/prompts/composition.md)、[风格预设](references/prompts/style_presets.md) 和 [配色方案](references/prompts/color_palettes.md)。
 - 需要参考完整样例时，读取 `examples/` 中与赛道最接近的案例。
@@ -69,7 +70,7 @@ compatibility: 适用于支持读取本地文件和图片的 Agent；直接生�
 6. 建议图片张数；默认 5-7 张，教程型可 6-9 张，轻量种草可 3-5 张。
 7. 为每张图输出可直接用于生图模型的 Prompt，包含主体、场景、构图、风格、配色、文字区域要求和负面约束。
 8. 生成 3-5 个标题、正文、标签组合、评论钩子和发布建议。
-9. 若用户要求直接生图，按“生图配置与调用”执行。
+9. 若用户要求直接生图，按“生图配置与调用”执行；若脚本、Python 环境或输出目录不可用，按 [脚本降级输出规则](references/fallback_outputs.md) 输出 ASCII 示例图和 Prompt，不中断正文、标题、标签和评论钩子交付。
 
 ## 发布后复盘模式
 
@@ -80,12 +81,15 @@ compatibility: 适用于支持读取本地文件和图片的 Agent；直接生�
 1. 读取 [发布后复盘规则](references/post_publish_review.md)，识别输入来源：手动数据、截图识别、单篇链接或主页链接。
 2. 链接只抓取公开可见信息；不登录、不绕过验证码、不采集私信、订单、后台等敏感数据。抓取失败或字段不可见时，友好提示用户提供截图或文字信息。
 3. 复盘时不强制执行新笔记的主题确认；若用户要求基于复盘结果生成下一篇完整笔记，再按“文字规划模式”进入主题确认、选题和成稿流程。
-4. 基于用户提供或公开可见的数据做全链路诊断：曝光、阅读/点击、点赞、收藏、评论、分享、关注和转化。缺失数据不猜测，标注为“数据不足”。
-5. 输出六维评分：入口吸引力、标题搜索力、正文承接力、收藏价值、评论互动、转化/关注潜力。每项 0-100，并说明证据、置信度和数据缺口。
-6. 给出“诊断 + 实验卡”：问题排序、可能原因、下一篇要验证的假设、封面/标题/开头/正文/标签/评论钩子/发布时间/选题方向的可执行建议。
-7. 用户要求 HTML 看板时，将复盘结果整理为 JSON，并调用：`python3 scripts/generate_review_report.py --input <review.json> --output-dir outputs/reports`。
-8. HTML 看板必须是离线单文件，默认内嵌用户图片，包含总分、六维雷达图、指标柱状图、互动占比饼图、连线式分析图和下一篇建议。
-9. 不承诺爆款或确定算法结论，只写“可能原因”“建议验证”“下一轮实验”。
+4. 把“小眼睛/观看/阅读/查看数”视为 `metrics.views`，把曝光视为 `metrics.exposure`，二者不能混用；链接解析不到 `views` 时，先追问用户补充小眼睛/观看数，用户明确回复“跳过”后才输出不完整流量诊断。
+5. 基于用户提供或公开可见的数据做流量漏斗诊断：曝光（如有）→ 观看/小眼睛 → 点赞/收藏/评论/分享 → 关注/转化。缺失数据不猜测，标注为“数据不足”。
+6. 复盘时联网搜索同类笔记/赛道的目标人群、搜索关键词、热门标签和常见标题表达，用于判断封面标题点击力、人群匹配和搜索流量潜力；联网不可用时明确说明。
+7. 给出“流量诊断 + 行动建议”：数据结论、卡点判断、封面标题点击诊断、目标人群与关键词匹配、当前这篇补救动作、下一篇迭代实验。
+8. 六维评分只作为附录参考保留：入口吸引力、标题搜索力、正文承接力、收藏价值、评论互动、转化/关注潜力。不要把总分或六维评分放在主结论。
+9. 用户要求 HTML 看板时，将复盘结果整理为 JSON，并调用：`python3 scripts/generate_review_report.py --input <review.json> --output-dir outputs/reports`。
+10. HTML 看板必须是离线单文件，默认内嵌用户图片，首屏展示数据结论、流量漏斗、封面标题点击诊断、目标人群与关键词匹配、当前补救和下一篇迭代；六维雷达图放入附录。
+11. 若 HTML 报告脚本、Python 环境或输出目录不可用，按 [脚本降级输出规则](references/fallback_outputs.md) 输出 `## 发布后复盘报告（Markdown 降级版）`，用 Markdown 表格替代图表和 HTML 文件，并明确说明未生成真实 HTML。
+12. 不承诺爆款或确定算法结论，只写“可能原因”“建议验证”“下一轮实验”。
 
 ## 生图配置与调用
 
@@ -100,8 +104,17 @@ compatibility: 适用于支持读取本地文件和图片的 Agent；直接生�
 
 - API Key 只写入本地配置或环境变量，不在最终回答中完整展示。
 - 环境变量优先级高于配置文件：`XHS_IMAGE_PROVIDER`、`XHS_IMAGE_BASE_URL`、`XHS_IMAGE_API_KEY`、`XHS_IMAGE_MODEL`、`XHS_IMAGE_SIZE`、`XHS_IMAGE_QUALITY`、`XHS_IMAGE_TIMEOUT_SECONDS`。
+- 调用脚本前检查 `scripts/generate_images.py`、`python3`、prompts 文件和输出目录是否可用；任一不可用时，不要声称已生成真实图片，改用 ASCII 示例图降级输出。
 - 生图脚本：`python3 scripts/generate_images.py --prompts <prompts.json> --output-dir outputs/images`
 - 试运行请求体：`python3 scripts/generate_images.py --prompts <prompts.json> --dry-run`
+
+## 脚本可用性与降级输出
+
+当用户环境中的 `scripts/` 目录丢失、目标 `.py` 文件丢失、`python3` 不存在、脚本执行失败、权限不足或输出目录不可写时，按 [脚本降级输出规则](references/fallback_outputs.md) 继续交付。
+
+- 生图不可用：输出 ASCII 示例文字图片、图片用途说明和可复制 Prompt；明确写“这是示意图，不是真实生成图片”。
+- HTML 报告不可用：输出 `## 发布后复盘报告（Markdown 降级版）`，用数据结论、流量漏斗表、封面标题点击诊断、目标人群与关键词匹配、当前补救动作、下一篇实验卡和附录参考评分替代 HTML 看板。
+- 降级输出仍必须完成标题、正文、标签、评论钩子、复盘结论或下一篇建议，不把脚本不可用当作整体任务失败。
 
 ## 输出模板
 

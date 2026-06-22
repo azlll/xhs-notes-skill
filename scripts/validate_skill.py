@@ -31,6 +31,7 @@ REQUIRED_FILES = [
     "references/topic_selection.md",
     "references/live_formula_refresh.md",
     "references/image_understanding_prompt.md",
+    "references/fallback_outputs.md",
     "references/post_publish_review.md",
     "references/risk_checklist.md",
     "references/prompts/composition.md",

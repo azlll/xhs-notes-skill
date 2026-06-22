@@ -66,6 +66,7 @@ class SkillProjectTest(unittest.TestCase):
         self.assertIn("references/topic_selection.md", skill)
         self.assertIn("references/live_formula_refresh.md", skill)
         self.assertIn("references/image_understanding_prompt.md", skill)
+        self.assertIn("references/fallback_outputs.md", skill)
         self.assertIn("references/post_publish_review.md", skill)
         self.assertIn("scripts/generate_review_report.py", skill)
         self.assertIn("动态澄清规则", skill)
@@ -79,6 +80,13 @@ class SkillProjectTest(unittest.TestCase):
         self.assertIn("发布后复盘模式", skill)
         self.assertIn("HTML 看板", skill)
         self.assertIn("六维评分", skill)
+        self.assertIn("小眼睛/观看", skill)
+        self.assertIn("流量漏斗", skill)
+        self.assertIn("封面标题点击诊断", skill)
+        self.assertIn("目标人群与关键词匹配", skill)
+        self.assertIn("脚本可用性与降级输出", skill)
+        self.assertIn("ASCII 示例图", skill)
+        self.assertIn("Markdown 降级版", skill)
         self.assertIn("## 可复制发布区", skill)
         self.assertIn("## 分析说明", skill)
 
@@ -143,6 +151,20 @@ class SkillProjectTest(unittest.TestCase):
                     "shares": 8,
                     "follows": 5,
                 },
+                "traffic": {
+                    "conclusion": "观看后点赞强于收藏，内容更偏情绪共鸣。",
+                    "funnel_issue": "更可能卡在收藏价值。",
+                    "cover_title_diagnosis": "有曝光和小眼睛，可判断封面标题点击效率。",
+                    "current_actions": [{"title": "置顶评论补充路线", "action": "补预算、时长和适合人群。"}],
+                    "next_iteration": [{"title": "下一篇改成午休自救清单", "change": "封面写 3 个可复制动作。"}],
+                },
+                "audience_keywords": {
+                    "target_audience": ["打工人", "午休想放松的人"],
+                    "keywords": ["工作日午休", "打工人自救"],
+                    "hot_tags": ["咖啡厅日常"],
+                    "title_patterns": ["打工人午休去哪"],
+                    "match_diagnosis": "目标人群明确，关键词还可以更长尾。",
+                },
                 "scores": {
                     "入口吸引力": {"score": 76, "evidence": "封面有场景感。", "confidence": "中"},
                     "标题搜索力": {"score": 68, "evidence": "有场景词。", "confidence": "中"},
@@ -177,13 +199,21 @@ class SkillProjectTest(unittest.TestCase):
         self.assertIn("工作日中午，我偷偷去咖啡厅充了个电", html)
         self.assertIn("data:image/png;base64", html)
         self.assertIn("<svg", html)
-        self.assertIn("六维评分", html)
-        self.assertIn("六维雷达图", html)
+        self.assertIn("数据结论", html)
+        self.assertIn("流量来自哪里，卡在哪一段", html)
+        self.assertIn("封面和标题是否吸引点击", html)
+        self.assertIn("目标人群与关键词是否匹配", html)
+        self.assertIn("当前这篇还能补救什么", html)
+        self.assertIn("下一篇怎么迭代", html)
+        self.assertIn("参考评分（六维评分弱化）", html)
+        self.assertIn("六维雷达图（附录）", html)
         self.assertIn("指标柱状图", html)
         self.assertIn("互动占比饼图", html)
         self.assertIn("连线图", html)
-        self.assertIn("下一篇建议", html)
+        self.assertIn("小眼睛/观看", html)
+        self.assertIn("打工人", html)
         self.assertIn("下一篇改成午休自救清单", html)
+        self.assertNotIn("总分 / 100", html)
         for forbidden in ("cdn.jsdelivr", "cdnjs", "unpkg"):
             self.assertNotIn(forbidden, html)
 
@@ -208,11 +238,21 @@ class SkillProjectTest(unittest.TestCase):
         self.assertIn("选项框", readme)
         self.assertIn("发布后复盘 HTML 看板", readme)
         self.assertIn("复盘报告脚本", readme)
+        self.assertIn("小眼睛/观看", readme)
+        self.assertIn("数据结论", readme)
+        self.assertIn("流量漏斗", readme)
+        self.assertIn("封面标题点击诊断", readme)
+        self.assertIn("目标人群与关键词匹配", readme)
+        self.assertIn("六维评分保留但弱化", readme)
         self.assertIn("六维雷达图", readme)
         self.assertIn("指标柱状图", readme)
         self.assertIn("互动占比饼图", readme)
         self.assertIn("连线图", readme)
         self.assertIn("下一篇实验卡", readme)
+        self.assertIn("纯文本降级", readme)
+        self.assertIn("ASCII 示例图", readme)
+        self.assertIn("Markdown 降级版", readme)
+        self.assertIn("Python 不可用", readme)
         for needle in (
             "风景图生成治愈文案",
             "AI 插画生成热梗风笔记",
@@ -248,6 +288,24 @@ class SkillProjectTest(unittest.TestCase):
             "references/topic_selection.md": ["主题确认", "选题建议", "自定义输入主题", "未确认主题不得生成最终笔记"],
             "references/live_formula_refresh.md": ["联网不可用", "回退到内置公式库", "搜索查询", "已确认主题", "实时新闻", "热梗", "主题强相关"],
             "references/image_understanding_prompt.md": ["当前农历日期", "可见事实", "合理推断", "不确定信息", "社会热点"],
+            "references/fallback_outputs.md": [
+                "脚本不可用",
+                "scripts/ 目录缺失",
+                "python3 不存在",
+                "ASCII 示例图",
+                "这只是示意图，不是真实生成图片",
+                "发布后复盘报告（Markdown 降级版）",
+                "小眼睛/观看数",
+                "不完整流量诊断",
+                "数据结论",
+                "流量漏斗表",
+                "封面标题点击诊断表",
+                "目标人群与关键词匹配表",
+                "附录参考评分",
+                "六维评分表",
+                "下一篇实验卡表",
+                "风险提醒表",
+            ],
             "references/post_publish_review.md": [
                 "发布后复盘",
                 "手动数据",
@@ -255,12 +313,18 @@ class SkillProjectTest(unittest.TestCase):
                 "单篇链接",
                 "主页链接",
                 "公开可见信息",
+                "小眼睛/观看数必问",
+                "流量漏斗诊断",
+                "封面标题点击诊断",
+                "目标人群与关键词匹配",
+                "六维评分保留但弱化",
                 "六维评分",
                 "六维雷达图",
                 "指标柱状图",
                 "互动占比饼图",
                 "连线图",
                 "下一篇实验卡",
+                "Markdown 降级版",
             ],
             "references/risk_checklist.md": ["AI 生成内容", "发布前检查清单"],
         }

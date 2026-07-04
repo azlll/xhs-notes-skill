@@ -27,6 +27,8 @@ REQUIRED_FILES = [
     "references/trend_keywords.md",
     "references/meme_sentence_patterns.md",
     "references/trend_update_rules.md",
+    "references/capability_routing.md",
+    "references/function_playbook.md",
     "references/dynamic_clarification.md",
     "references/topic_selection.md",
     "references/live_formula_refresh.md",

@@ -95,9 +95,17 @@ class SkillProjectTest(unittest.TestCase):
     def test_skill_frontmatter_and_modes(self):
         skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("name: xhs-notes-skill", skill)
+        self.assertIn("版本：2.0.0", skill)
+        self.assertIn("作者：程小朱", skill)
+        self.assertIn("https://www.xiaohongshu.com/user/profile/5b589d65e8ac2b0abf539cd0", skill)
+        for alias in ("小红书图文笔记skill", "图文skill", "笔记skill", "小红书skill"):
+            self.assertIn(alias, skill)
         self.assertIn("单功能", skill)
         self.assertIn("工作流", skill)
         self.assertIn("完整功能列表", skill)
+        self.assertIn("使用说明响应规则", skill)
+        self.assertIn("工作量说明", skill)
+        self.assertIn("13 个单功能", skill)
         self.assertIn("温和顾问式拷问", skill)
         self.assertIn("references/capability_routing.md", skill)
         self.assertIn("references/function_playbook.md", skill)
@@ -343,6 +351,11 @@ class SkillProjectTest(unittest.TestCase):
 
     def test_readme_usage_cases(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("版本：2.0.0", readme)
+        self.assertIn("作者：程小朱", readme)
+        self.assertIn("https://www.xiaohongshu.com/user/profile/5b589d65e8ac2b0abf539cd0", readme)
+        for alias in ("小红书图文笔记skill", "图文skill", "笔记skill", "小红书skill"):
+            self.assertIn(alias, readme)
         self.assertIn("## 一分钟上手", readme)
         self.assertIn("## 短版菜单", readme)
         self.assertIn("## 完整功能列表", readme)
@@ -409,6 +422,19 @@ class SkillProjectTest(unittest.TestCase):
             "references/meme_sentence_patterns.md": ["标题句式", "开头句式", "赛道适配"],
             "references/trend_update_rules.md": ["何时需要更新", "推荐校验流程", "降级策略"],
             "references/capability_routing.md": [
+                "触发别名",
+                "小红书图文笔记skill",
+                "图文skill",
+                "笔记skill",
+                "小红书skill",
+                "使用说明响应",
+                "作者信息",
+                "工作流和用法",
+                "单功能和用法",
+                "工作量说明",
+                "轻量单功能",
+                "中等工作流",
+                "重度复盘/拆解",
                 "短版菜单",
                 "完整功能列表",
                 "温和顾问式拷问",
